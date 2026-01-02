@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arcunox Alias Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    /* Minimal, Arcunox-style aesthetic */
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #050609;
+      color: #f5f5f5;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                   "SF Pro Text", "Segoe UI", sans-serif;
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 420px;
+      width: 100%;
+      padding: 24px;
+    }
+
+    .title {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 16px;
+    }
+
+    .row {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #777;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      background: #121318;
+      border: 1px solid #333;
+      color: #f5f5f5;
+      font-size: 13px;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: #f5f5f5;
+    }
+
+    .btn-generate {
+      width: 100%;
+      border: 1px solid #f5f5f5;
+      background: #f5f5f5;
+      color: #050609;
+      padding: 9px 10px;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .btn-generate:active {
+      background: #ddd;
+    }
+
+    .output {
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas,
+                   "Liberation Mono", monospace;
+      font-size: 13px;
+      padding: 10px;
+      background: #0b0c10;
+      border: 1px solid #333;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      word-break: break-all;
+    }
+
+    .output span {
+      flex: 1;
+    }
+
+    .copy-btn {
+      border: 1px solid #333;
+      background: transparent;
+      color: #aaa;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 4px 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .hint {
+      font-size: 10px;
+      color: #555;
+      margin-top: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="title">Arcunox / Alias</div>
+
+    <div class="row">
+      <label for="seed">Seed (optional)</label>
+      <input id="seed" type="text" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="row">
+      <label for="domain">Domain</label>
+      <input id="domain" type="text" autocomplete="off" spellcheck="false"
+             value="arcunox.com">
+    </div>
+
+    <button class="btn-generate" id="generateBtn">Generate</button>
+
+    <div class="output">
+      <span id="aliasOutput"></span>
+      <button class="copy-btn" id="copyBtn">Copy</button>
+    </div>
+
+    <div class="hint">
+      No logs. No analytics. All client‑side.
+    </div>
+  </div>
+
+  <script type="module">
+    import { MODES } from "./vocab.js";
+
+    // ---------- UTILITIES ----------
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomChoice(arr) {
+      return arr[randInt(0, arr.length - 1)];
+    }
+
+    function randomEntropy(len) {
+      const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+      let out = "";
+      for (let i = 0; i < len; i++) {
+        out += chars.charAt(randInt(0, chars.length - 1));
+      }
+      return out;
+    }
+
+    function normalizeShard(seed, fallbackShards) {
+      const s = (seed || "").trim();
+      if (!s) return randomChoice(fallbackShards);
+      return s.toLowerCase().replace(/\s+/g, "-");
+    }
+
+    // ---------- STATE ----------
+
+    let currentMode = "abstract";
+
+    // ---------- DOM ELEMENTS ----------
+
+    const seedInput = document.getElementById("seed");
+    const domainInput = document.getElementById("domain");
+    const generateBtn = document.getElementById("generateBtn");
+    const aliasOutput = document.getElementById("aliasOutput");
+    const copyBtn = document.getElementById("copyBtn");
+
+    // ---------- GENERATION ----------
+
+    function generateAlias() {
+      const mode = MODES[currentMode];
+      const seed = seedInput.value;
+      const domain = (domainInput.value || "").trim() || "arcunox.com";
+
+      const prefix = randomChoice(mode.prefixes);
+      const entropy = randomEntropy(randInt(4, 6));
+      const shard = normalizeShard(seed, mode.shards);
+
+      const alias = `${prefix}-${entropy}-${shard}@${domain}`;
+      aliasOutput.textContent = alias;
+      return alias;
+    }
+
+    generateBtn.addEventListener("click", generateAlias);
+
+    copyBtn.addEventListener("click", async () => {
+      const alias = aliasOutput.textContent.trim();
+      if (!alias) return;
+
+      try {
+        await navigator.clipboard.writeText(alias);
+        const original = copyBtn.textContent;
+        copyBtn.textContent = "Copied";
+        setTimeout(() => (copyBtn.textContent = original), 900);
+      } catch (e) {
+        // silent failure
+      }
+    });
+
+    // Generate one on load
+    generateAlias();
+  </script>
+</body>
+</html>
+
