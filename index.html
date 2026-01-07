@@ -116,7 +116,6 @@ input[type="text"]:focus {
   border-color: #f5f5f5;
 }
 
-/* italic placeholders */
 input::placeholder {
   font-style: italic;
   color: #555;
@@ -170,7 +169,7 @@ input::placeholder {
   white-space: nowrap;
 }
 
-/* segmented controls for separators */
+/* segmented controls */
 .seg {
   display: flex;
   width: 100%;
@@ -221,19 +220,19 @@ input::placeholder {
         <input id="domain" type="text" placeholder="optional" autocomplete="off" spellcheck="false">
       </div>
 
+      <!-- PREFIX -->
       <div class="row">
-        <label>Prefix → Entropy</label>
-        <div class="seg" data-sep-group="A">
-          <button type="button" data-val="none" class="seg-btn active">none</button>
-          <button type="button" data-val="_"    class="seg-btn">underscore</button>
-          <button type="button" data-val="-"    class="seg-btn">hyphen</button>
-          <button type="button" data-val="."    class="seg-btn">period</button>
+        <label>Prefix</label>
+        <div class="seg" id="prefixSeg">
+          <button type="button" data-val="yes" class="seg-btn active">yes</button>
+          <button type="button" data-val="no"  class="seg-btn">no</button>
         </div>
       </div>
 
+      <!-- UNIVERSAL SEPARATOR -->
       <div class="row">
-        <label>Entropy → Suffix</label>
-        <div class="seg" data-sep-group="B">
+        <label>Separator</label>
+        <div class="seg" id="sepSeg">
           <button type="button" data-val="none" class="seg-btn active">none</button>
           <button type="button" data-val="_"    class="seg-btn">underscore</button>
           <button type="button" data-val="-"    class="seg-btn">hyphen</button>
@@ -299,33 +298,29 @@ input::placeholder {
   const aliasOutput  = document.getElementById("aliasOutput");
   const copyBtn      = document.getElementById("copyBtn");
 
-  // segmented control state
-  let sepA = "none";
-  let sepB = "none";
+  let prefixEnabled = true;
+  let separator = "";
 
-  function initSegControls() {
-    const groups = document.querySelectorAll(".seg");
+  function initSegControl(id, callback) {
+    const seg = document.getElementById(id);
+    const buttons = seg.querySelectorAll(".seg-btn");
 
-    groups.forEach(group => {
-      const groupId = group.getAttribute("data-sep-group"); // "A" or "B"
-      const buttons = group.querySelectorAll(".seg-btn");
-
-      buttons.forEach(btn => {
-        btn.addEventListener("click", () => {
-          // clear active in this group
-          buttons.forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-
-          const val = btn.getAttribute("data-val");
-          if (groupId === "A") {
-            sepA = val;
-          } else if (groupId === "B") {
-            sepB = val;
-          }
-        });
+    buttons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        buttons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        callback(btn.getAttribute("data-val"));
       });
     });
   }
+
+  initSegControl("prefixSeg", val => {
+    prefixEnabled = (val === "yes");
+  });
+
+  initSegControl("sepSeg", val => {
+    separator = (val === "none") ? "" : val;
+  });
 
   function generateAlias() {
     const mode = MODES[currentMode];
@@ -338,15 +333,14 @@ input::placeholder {
     const entropy = randomEntropy(randInt(4, 6));
     const shard   = normalizeShard(seed, mode.shards);
 
-    const allowed = ["_", "-", ".", "none"];
+    let localPart = "";
 
-    let sA = allowed.includes(sepA) ? sepA : "none";
-    let sB = allowed.includes(sepB) ? sepB : "none";
+    if (prefixEnabled) {
+      localPart = `${prefix}${separator}${entropy}${separator}${shard}`;
+    } else {
+      localPart = `${entropy}${separator}${shard}`;
+    }
 
-    if (sA === "none") sA = "";
-    if (sB === "none") sB = "";
-
-    const localPart = `${prefix}${sA}${entropy}${sB}${shard}`;
     const alias = domain === "" ? localPart : `${localPart}@${domain}`;
 
     aliasOutput.textContent = alias;
@@ -367,10 +361,8 @@ input::placeholder {
     } catch (e) {}
   });
 
-  initSegControls();
   generateAlias();
 </script>
 
 </body>
 </html>
-
